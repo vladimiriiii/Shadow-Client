@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Shadow Client
 
 Mod Fabric połączony z czterema modułami: BoatFly, Komar, Killaura i MinecraftESP. Projekt używa Fabric Loom 1.14.1, Minecrafta 1.21.4 i Javy 21 LTS. Kod moda znajduje się w plikach `.java` w `src/main/java`.
@@ -15,3 +16,6 @@ gradle build
 ```
 
 Gotowy plik moda znajdziesz w `build/libs/shadow-client-1.0.0.jar`. Mod wymaga Fabric Loader i Fabric API dla Minecrafta 1.21.4.
+=======
+# Shadow-Client
+>>>>>>> 11f23a34f490df1b242bbd4c5078f60218371aa7
