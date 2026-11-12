@@ -26,7 +26,7 @@ public final class EmptyScreen extends Screen {
         context.fill(left - 1, top - 1, left + panelWidth + 1, top + PANEL_HEIGHT + 1, 0xFF8048D8);
         context.fill(left, top, left + panelWidth, top + PANEL_HEIGHT, 0xFF0D0B12);
         context.drawTextWithShadow(textRenderer, Text.literal("SHADOW CLIENT"), left + 14, top + 12, 0xFFE4C6FF);
-        context.drawTextWithShadow(textRenderer, Text.literal("LPM: wlacz/wylacz    SPM: ustaw bind"),
+        context.drawTextWithShadow(textRenderer, Text.literal("LPM: on/off | SPM: bind | PPM Komar: rakieta 1-10s"),
                 left + 14, top + 29, 0xFFAAA3B5);
 
         int index = 0;
@@ -38,6 +38,11 @@ public final class EmptyScreen extends Screen {
             context.fill(left + 10, rowTop, left + panelWidth - 10, rowTop + ROW_HEIGHT - 3, background);
             context.drawTextWithShadow(textRenderer, Text.literal(module.label()), left + 18, rowTop + 9,
                     module.enabled() ? 0xFFE3C5FF : 0xFFE8E5EC);
+            if (module == ClientModules.Module.KOMAR) {
+                String interval = "Rakieta: " + KomarModule.fireworkIntervalSeconds() + " s";
+                context.drawTextWithShadow(textRenderer, Text.literal(interval), left + 112, rowTop + 9,
+                        0xFFCFC4DD);
+            }
             String bind = waitingForBind == module ? "KLAWISZ / MYSZ..." : module.bindName();
             context.drawTextWithShadow(textRenderer, Text.literal(bind), left + panelWidth - 142,
                     rowTop + 9, waitingForBind == module ? 0xFFFFD479 : 0xFFB5AEC0);
@@ -55,7 +60,8 @@ public final class EmptyScreen extends Screen {
             waitingForBind = null;
             return true;
         }
-        if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT && button != GLFW.GLFW_MOUSE_BUTTON_MIDDLE) {
+        if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT && button != GLFW.GLFW_MOUSE_BUTTON_MIDDLE
+                && button != GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
             return super.mouseClicked(mouseX, mouseY, button);
         }
         int panelWidth = Math.min(PANEL_WIDTH, width - 24);
@@ -68,7 +74,10 @@ public final class EmptyScreen extends Screen {
             return super.mouseClicked(mouseX, mouseY, button);
         }
         ClientModules.Module module = ClientModules.Module.values()[row];
-        if (button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE) waitingForBind = module;
+        if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+            if (module == ClientModules.Module.KOMAR) KomarModule.cycleFireworkInterval();
+        }
+        else if (button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE) waitingForBind = module;
         else ClientModules.toggle(module, client);
         return true;
     }
