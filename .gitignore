@@ -1,0 +1,16 @@
+# Gradle and generated mod artifacts
+.gradle/
+build/
+out/
+
+# IDE metadata
+.idea/
+.vscode/
+*.iml
+
+# Java output
+*.class
+
+# OS files
+.DS_Store
+Thumbs.db
