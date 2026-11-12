@@ -10,11 +10,16 @@ import net.minecraft.util.math.Vec3d;
 
 final class KomarModule {
     private static final double SEARCH_RANGE_SQUARED = 128.0 * 128.0;
-    private static final double FOLLOW_DISTANCE = 2.6;
-    private static final float TURN_SMOOTHING = 0.38F;
-    private static final float MAX_YAW_STEP = 14.0F;
-    private static final float MAX_PITCH_STEP = 8.0F;
+    private static final double FOLLOW_DISTANCE = 4.0;
+    private static final float MAX_YAW_SPEED = 5.5F;
+    private static final float MAX_PITCH_SPEED = 2.5F;
+    private static final float YAW_ACCELERATION = 0.65F;
+    private static final float PITCH_ACCELERATION = 0.3F;
+    private static final float YAW_RESPONSE = 0.28F;
+    private static final float PITCH_RESPONSE = 0.25F;
     private static AbstractClientPlayerEntity target;
+    private static float yawTurnSpeed;
+    private static float pitchTurnSpeed;
     private static int fireworkIntervalSeconds = 3;
     private static long lastFireworkTime;
 
@@ -23,6 +28,8 @@ final class KomarModule {
     static void reset() {
         target = null;
         lastFireworkTime = 0;
+        yawTurnSpeed = 0;
+        pitchTurnSpeed = 0;
     }
 
     static int fireworkIntervalSeconds() {
@@ -34,11 +41,11 @@ final class KomarModule {
     }
 
     static void tick(MinecraftClient client) {
-        if (!ClientModules.Module.KOMAR.enabled() || client.player == null || client.world == null
-                || client.currentScreen != null) {
+        if (!ClientModules.Module.KOMAR.enabled() || client.player == null || client.world == null) {
             reset();
             return;
         }
+        if (client.currentScreen != null) return;
 
         var player = client.player;
         if (!player.getEquippedStack(EquipmentSlot.CHEST).isOf(Items.ELYTRA) || !player.isGliding()) return;
@@ -53,8 +60,7 @@ final class KomarModule {
     private static boolean isValidTarget(MinecraftClient client, AbstractClientPlayerEntity player,
                                          AbstractClientPlayerEntity candidate) {
         return candidate != null && candidate != player && candidate.isAlive() && !candidate.isSpectator()
-                && client.world.getPlayers().contains(candidate)
-                && player.squaredDistanceTo(candidate) <= SEARCH_RANGE_SQUARED;
+                && client.world.getPlayers().contains(candidate);
     }
 
     private static AbstractClientPlayerEntity findNearestTarget(MinecraftClient client,
@@ -99,10 +105,17 @@ final class KomarModule {
         float desiredPitch = (float) -Math.toDegrees(Math.atan2(direction.y,
                 Math.max(horizontalDistance, 0.001)));
 
-        float yaw = player.getYaw() + clamp(wrap(desiredYaw - player.getYaw()) * TURN_SMOOTHING,
-                -MAX_YAW_STEP, MAX_YAW_STEP);
-        float pitch = player.getPitch() + clamp((desiredPitch - player.getPitch()) * TURN_SMOOTHING,
-                -MAX_PITCH_STEP, MAX_PITCH_STEP);
+        float yawError = wrap(desiredYaw - player.getYaw());
+        float pitchError = desiredPitch - player.getPitch();
+        yawTurnSpeed = smoothTurnSpeed(yawError, yawTurnSpeed, MAX_YAW_SPEED,
+                YAW_ACCELERATION, YAW_RESPONSE);
+        pitchTurnSpeed = smoothTurnSpeed(pitchError, pitchTurnSpeed, MAX_PITCH_SPEED,
+                PITCH_ACCELERATION, PITCH_RESPONSE);
+        if (Math.abs(yawError) < 0.2F && Math.abs(yawTurnSpeed) < 0.08F) yawTurnSpeed = 0;
+        if (Math.abs(pitchError) < 0.2F && Math.abs(pitchTurnSpeed) < 0.08F) pitchTurnSpeed = 0;
+
+        float yaw = player.getYaw() + yawTurnSpeed;
+        float pitch = player.getPitch() + pitchTurnSpeed;
         player.setYaw(yaw);
         player.setPitch(pitch);
         player.setHeadYaw(yaw);
@@ -140,6 +153,13 @@ final class KomarModule {
 
     private static double clamp(double value, double min, double max) {
         return Math.max(min, Math.min(max, value));
+    }
+
+    private static float smoothTurnSpeed(float error, float currentSpeed, float maxSpeed,
+                                         float acceleration, float response) {
+        float desiredSpeed = clamp(error * response, -maxSpeed, maxSpeed);
+        float speedChange = clamp(desiredSpeed - currentSpeed, -acceleration, acceleration);
+        return currentSpeed + speedChange;
     }
 
     private static float clamp(float value, float min, float max) {
