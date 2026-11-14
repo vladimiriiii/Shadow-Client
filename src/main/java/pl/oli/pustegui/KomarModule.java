@@ -10,17 +10,24 @@ import net.minecraft.util.math.Vec3d;
 
 final class KomarModule {
     private static final double SEARCH_RANGE_SQUARED = 128.0 * 128.0;
-    private static final double FOLLOW_DISTANCE = 4.0;
-    private static final float MAX_YAW_SPEED = 5.5F;
-    private static final float MAX_PITCH_SPEED = 2.5F;
-    private static final float YAW_ACCELERATION = 0.65F;
-    private static final float PITCH_ACCELERATION = 0.3F;
-    private static final float YAW_RESPONSE = 0.28F;
-    private static final float PITCH_RESPONSE = 0.25F;
+    private static final double FOLLOW_DISTANCE = 2.0;
+    private static final float MAX_YAW_SPEED = 13.0F;
+    private static final float MAX_PITCH_SPEED = 8.0F;
+    private static final float YAW_ACCELERATION = 2.2F;
+    private static final float PITCH_ACCELERATION = 1.4F;
+    private static final float YAW_RESPONSE = 0.62F;
+    private static final float PITCH_RESPONSE = 0.55F;
+    private static final long AUTO_FIREWORK_COOLDOWN_MS = 250L;
+    private static final double AUTO_FIREWORK_MIN_DISTANCE = 3.0;
+    private static final double AUTO_FIREWORK_LOW_SPEED = 1.35;
+    private static final double AUTO_FIREWORK_REARM_DISTANCE = 3.0;
+    private static final double AUTO_FIREWORK_REARM_SPEED = 2.0;
     private static AbstractClientPlayerEntity target;
     private static float yawTurnSpeed;
     private static float pitchTurnSpeed;
     private static int fireworkIntervalSeconds = 3;
+    private static boolean automaticFirework;
+    private static boolean automaticFireworkArmed = true;
     private static long lastFireworkTime;
 
     private KomarModule() {}
@@ -28,6 +35,7 @@ final class KomarModule {
     static void reset() {
         target = null;
         lastFireworkTime = 0;
+        automaticFireworkArmed = true;
         yawTurnSpeed = 0;
         pitchTurnSpeed = 0;
     }
@@ -38,6 +46,20 @@ final class KomarModule {
 
     static void cycleFireworkInterval() {
         fireworkIntervalSeconds = fireworkIntervalSeconds % 10 + 1;
+    }
+
+    static void adjustFireworkInterval(int amount) {
+        fireworkIntervalSeconds = Math.max(1, Math.min(10, fireworkIntervalSeconds + amount));
+    }
+
+    static boolean automaticFirework() {
+        return automaticFirework;
+    }
+
+    static void toggleAutomaticFirework() {
+        automaticFirework = !automaticFirework;
+        automaticFireworkArmed = true;
+        lastFireworkTime = 0;
     }
 
     static void tick(MinecraftClient client) {
@@ -54,7 +76,7 @@ final class KomarModule {
         if (target == null) return;
 
         steerTowardTarget(player, target);
-        tryUseFirework(client, player);
+        tryUseFirework(client, player, target);
     }
 
     private static boolean isValidTarget(MinecraftClient client, AbstractClientPlayerEntity player,
@@ -122,9 +144,17 @@ final class KomarModule {
         player.setBodyYaw(yaw);
     }
 
-    private static void tryUseFirework(MinecraftClient client, AbstractClientPlayerEntity player) {
+    private static void tryUseFirework(MinecraftClient client, AbstractClientPlayerEntity player,
+                                       AbstractClientPlayerEntity target) {
         long now = System.currentTimeMillis();
-        if (now - lastFireworkTime < fireworkIntervalSeconds * 1_000L || client.interactionManager == null) return;
+        if (client.interactionManager == null) return;
+        if (automaticFirework) {
+            updateAutomaticFireworkState(player, target);
+            if (now - lastFireworkTime < AUTO_FIREWORK_COOLDOWN_MS
+                    || !automaticFireworkArmed || !needsFirework(player, target)) return;
+        } else if (now - lastFireworkTime < fireworkIntervalSeconds * 1_000L) {
+            return;
+        }
 
         int rocketSlot = findFireworkSlot(player);
         if (rocketSlot < 0) return;
@@ -142,6 +172,26 @@ final class KomarModule {
             client.getNetworkHandler().sendPacket(new UpdateSelectedSlotC2SPacket(previousSlot));
         }
         lastFireworkTime = now;
+        if (automaticFirework) automaticFireworkArmed = false;
+    }
+
+    private static boolean needsFirework(AbstractClientPlayerEntity player, AbstractClientPlayerEntity target) {
+        double distance = player.distanceTo(target);
+        if (distance < AUTO_FIREWORK_MIN_DISTANCE) return false;
+        Vec3d velocity = player.getVelocity();
+        double horizontalSpeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+        return horizontalSpeed < AUTO_FIREWORK_LOW_SPEED;
+    }
+
+    private static void updateAutomaticFireworkState(AbstractClientPlayerEntity player,
+                                                     AbstractClientPlayerEntity target) {
+        if (automaticFireworkArmed) return;
+        Vec3d velocity = player.getVelocity();
+        double horizontalSpeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+        if (horizontalSpeed >= AUTO_FIREWORK_REARM_SPEED
+                || player.distanceTo(target) <= AUTO_FIREWORK_REARM_DISTANCE) {
+            automaticFireworkArmed = true;
+        }
     }
 
     private static int findFireworkSlot(AbstractClientPlayerEntity player) {

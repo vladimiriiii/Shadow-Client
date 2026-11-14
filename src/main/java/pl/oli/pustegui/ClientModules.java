@@ -9,7 +9,9 @@ import java.util.Map;
 /** Shared state and input handling for the modules shown in the click GUI. */
 public final class ClientModules {
     public enum Module {
-        BOAT_FLY("BoatFly"), KOMAR("Komar"), KILLAURA("Killaura"), ESP("MinecraftESP");
+        TRIDENT_BOOST("TridentBoost"),
+        BOAT_FLY("BoatFly"), KOMAR("Komar"), AUTO_WEDKA("AutoWędka"), KILLAURA("Killaura"), ESP("PlayerESP"),
+        ANTI_COBWEB("AntiCobweb"), ANTI_KOSTKA("AntiKostka"), AUTO_ARMOR("AutoArmor"), STOP("Stop");
 
         private final String label;
         private boolean enabled;
@@ -47,6 +49,7 @@ public final class ClientModules {
     }
 
     public static void tick(MinecraftClient client) {
+        AutoWedkaModule.restorePendingSlot(client);
         long window = client.getWindow().getHandle();
         if (client.currentScreen != null) {
             for (Module module : Module.values()) {
@@ -68,13 +71,19 @@ public final class ClientModules {
             }
         }
         BoatFlyModule.tick(client);
+        TridentBoostModule.tick(client);
         KomarModule.tick(client);
         KillauraModule.tick(client);
+        AutoWedkaModule.tick(client);
+        AntiKostkaModule.tick(client);
+        AutoArmorModule.tick(client);
+        StopModule.tick(client);
     }
 
     public static void toggle(Module module, MinecraftClient client) {
         module.enabled = !module.enabled;
         if (module == Module.KOMAR && !module.enabled) KomarModule.reset();
+        if (module == Module.STOP && !module.enabled) StopModule.reset();
         ModuleToggleHud.show(module, module.enabled);
     }
 
