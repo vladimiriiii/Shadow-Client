@@ -16,6 +16,7 @@ public final class EmptyScreen extends Screen {
     private int scrollOffset;
     private boolean komarSettingsOpen;
     private boolean tridentSettingsOpen;
+    private boolean maceDamageSettingsOpen;
 
     public EmptyScreen() { super(Text.literal("Shadow Client GUI")); }
 
@@ -52,6 +53,11 @@ public final class EmptyScreen extends Screen {
             super.render(context, mouseX, mouseY, delta);
             return;
         }
+        if (maceDamageSettingsOpen) {
+            renderMaceDamageSettings(context, left, top, panelWidth);
+            super.render(context, mouseX, mouseY, delta);
+            return;
+        }
 
         ClientModules.Module[] modules = ClientModules.Module.values();
         int visibleEnd = Math.min(modules.length, scrollOffset + VISIBLE_ROWS);
@@ -73,6 +79,10 @@ public final class EmptyScreen extends Screen {
             } else if (module == ClientModules.Module.TRIDENT_BOOST) {
                 context.drawTextWithShadow(textRenderer,
                         Text.literal("Zasieg: " + TridentBoostModule.distanceBlocks() + " blokow"),
+                        left + 112, rowTop + 9, 0xFFCFC4DD);
+            } else if (module == ClientModules.Module.MACE_DAMAGE) {
+                context.drawTextWithShadow(textRenderer,
+                        Text.literal("Upadek: " + MaceDamageModule.fallHeight() + " blokow"),
                         left + 112, rowTop + 9, 0xFFCFC4DD);
             }
             String bind = waitingForBind == module ? "KLAWISZ / MYSZ..." : module.bindName();
@@ -110,7 +120,7 @@ public final class EmptyScreen extends Screen {
         int panelWidth = Math.min(PANEL_WIDTH, width - 24);
         int left = (width - panelWidth) / 2;
         int top = (height - PANEL_HEIGHT) / 2;
-        if (komarSettingsOpen || tridentSettingsOpen) {
+        if (komarSettingsOpen || tridentSettingsOpen || maceDamageSettingsOpen) {
             if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
                 if (tridentSettingsOpen) {
                     if (inside(mouseX, mouseY, left + 72, top + 94, left + 116, top + 120))
@@ -119,6 +129,13 @@ public final class EmptyScreen extends Screen {
                         TridentBoostModule.adjustDistance(1);
                     else if (inside(mouseX, mouseY, left + 135, top + 166, left + panelWidth - 135, top + 193))
                         tridentSettingsOpen = false;
+                } else if (maceDamageSettingsOpen) {
+                    if (inside(mouseX, mouseY, left + 72, top + 94, left + 116, top + 120))
+                        MaceDamageModule.adjustFallHeight(-1);
+                    else if (inside(mouseX, mouseY, left + 274, top + 94, left + 318, top + 120))
+                        MaceDamageModule.adjustFallHeight(1);
+                    else if (inside(mouseX, mouseY, left + 135, top + 166, left + panelWidth - 135, top + 193))
+                        maceDamageSettingsOpen = false;
                 } else {
                     if (inside(mouseX, mouseY, left + 72, top + 82, left + 116, top + 108))
                         KomarModule.adjustFireworkInterval(-1);
@@ -143,6 +160,7 @@ public final class EmptyScreen extends Screen {
         if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
             if (module == ClientModules.Module.KOMAR) komarSettingsOpen = true;
             else if (module == ClientModules.Module.TRIDENT_BOOST) tridentSettingsOpen = true;
+            else if (module == ClientModules.Module.MACE_DAMAGE) maceDamageSettingsOpen = true;
         }
         else if (button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE) waitingForBind = module;
         else ClientModules.toggle(module, client);
@@ -166,9 +184,11 @@ public final class EmptyScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if ((komarSettingsOpen || tridentSettingsOpen) && keyCode == GLFW.GLFW_KEY_ESCAPE) {
+        if ((komarSettingsOpen || tridentSettingsOpen || maceDamageSettingsOpen)
+                && keyCode == GLFW.GLFW_KEY_ESCAPE) {
             komarSettingsOpen = false;
             tridentSettingsOpen = false;
+            maceDamageSettingsOpen = false;
             return true;
         }
         if (waitingForBind != null) {
@@ -226,6 +246,26 @@ public final class EmptyScreen extends Screen {
                 top + 173, 0xFFB5AEC0);
         context.drawCenteredTextWithShadow(textRenderer,
                 Text.literal("Zasieg jest limitem lotu po wypuszczeniu tridentu."), left + panelWidth / 2,
+                top + PANEL_HEIGHT - 17, 0xFF8D8797);
+    }
+
+    private void renderMaceDamageSettings(DrawContext context, int left, int top, int panelWidth) {
+        context.drawTextWithShadow(textRenderer, Text.literal("MACEDAMAGE - USTAWIENIA"), left + 14, top + 54,
+                0xFFE4C6FF);
+        context.drawTextWithShadow(textRenderer, Text.literal("Symulowana wysokosc upadku (4-100 blokow)"),
+                left + 50, top + 78, 0xFFCFC4DD);
+        fillRoundedRect(context, left + 72, top + 94, left + 116, top + 120, 6, 0xFF34234A);
+        fillRoundedRect(context, left + 274, top + 94, left + 318, top + 120, 6, 0xFF34234A);
+        context.drawCenteredTextWithShadow(textRenderer, Text.literal("-"), left + 94, top + 101, 0xFFE8E5EC);
+        context.drawCenteredTextWithShadow(textRenderer,
+                Text.literal(MaceDamageModule.fallHeight() + " blokow"), left + panelWidth / 2,
+                top + 101, 0xFFE8E5EC);
+        context.drawCenteredTextWithShadow(textRenderer, Text.literal("+"), left + 296, top + 101, 0xFFE8E5EC);
+        fillRoundedRect(context, left + 135, top + 166, left + panelWidth - 135, top + 193, 7, 0xFF24212B);
+        context.drawCenteredTextWithShadow(textRenderer, Text.literal("Wroc"), left + panelWidth / 2,
+                top + 173, 0xFFB5AEC0);
+        context.drawCenteredTextWithShadow(textRenderer,
+                Text.literal("Serwer zdalny sam weryfikuje wysokosc upadku."), left + panelWidth / 2,
                 top + PANEL_HEIGHT - 17, 0xFF8D8797);
     }
 

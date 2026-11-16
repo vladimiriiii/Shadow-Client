@@ -11,7 +11,8 @@ public final class ClientModules {
     public enum Module {
         TRIDENT_BOOST("TridentBoost"),
         BOAT_FLY("BoatFly"), KOMAR("Komar"), AUTO_WEDKA("AutoWędka"), KILLAURA("Killaura"), ESP("PlayerESP"),
-        ANTI_COBWEB("AntiCobweb"), ANTI_KOSTKA("AntiKostka"), AUTO_ARMOR("AutoArmor"), STOP("Stop");
+        ANTI_COBWEB("AntiCobweb"), NO_PUSH("NoPush"), ANTI_KOSTKA("AntiKostka"), AUTO_ARMOR("AutoArmor"), STOP("Stop"),
+        MACE_DAMAGE("MaceDamage");
 
         private final String label;
         private boolean enabled;
